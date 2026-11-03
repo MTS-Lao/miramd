@@ -23,6 +23,9 @@ internal static partial class NativeCore
     [LibraryImport("miramd_core", EntryPoint = "miramd_render_html", StringMarshalling = StringMarshalling.Utf8)]
     private static partial IntPtr RenderHtmlNative(string markdown);
 
+    [LibraryImport("miramd_core", EntryPoint = "miramd_syntax_highlight_css")]
+    private static partial IntPtr SyntaxHighlightCssNative();
+
     [LibraryImport("miramd_core", EntryPoint = "miramd_outline_json", StringMarshalling = StringMarshalling.Utf8)]
     private static partial IntPtr OutlineNative(string markdown);
 
@@ -42,6 +45,7 @@ internal static partial class NativeCore
     private static partial void FreeNative(IntPtr value);
 
     internal static string Render(string markdown) => Take(RenderHtmlNative(markdown));
+    internal static string SyntaxHighlightCss { get; } = Take(SyntaxHighlightCssNative());
 
     internal static IReadOnlyList<OutlineItem> Outline(string markdown)
     {

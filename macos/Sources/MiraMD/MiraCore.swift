@@ -6,6 +6,9 @@ private func miramd_string_free(_ value: UnsafeMutablePointer<CChar>?)
 @_silgen_name("miramd_engine_version")
 private func miramd_engine_version() -> UnsafeMutablePointer<CChar>?
 
+@_silgen_name("miramd_syntax_highlight_css")
+private func miramd_syntax_highlight_css() -> UnsafeMutablePointer<CChar>?
+
 @_silgen_name("miramd_render_html")
 private func miramd_render_html(_ markdown: UnsafePointer<CChar>) -> UnsafeMutablePointer<CChar>?
 
@@ -55,6 +58,7 @@ struct DocumentStats: Codable, Equatable {
 
 enum MiraCore {
     static var version: String { decode(miramd_engine_version()) ?? "unknown" }
+    static let syntaxHighlightCSS = decode(miramd_syntax_highlight_css()) ?? ""
 
     static func render(_ markdown: String) -> String {
         call(markdown, miramd_render_html) ?? ""

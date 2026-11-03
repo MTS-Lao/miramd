@@ -10,6 +10,7 @@ This repository contains a working macOS MVP, a WinUI 3 Windows shell, a shared 
 - Persistent System, Light, and Dark appearance choices
 - Folder-based Markdown library with nested browsing, filtering, refresh, and file/folder creation
 - Visual WYSIWYG-style editing plus source, split, and formatted preview modes
+- Offline syntax highlighting for fenced code blocks with matching light and dark themes
 - Formatting controls for headings, emphasis, links, lists, tasks, quotes, and code
 - Portable `==highlight==` annotations, native Word highlighting, and clean Markdown/AI exports that remove only the markers
 - Document outline, word/line counts, and reading time

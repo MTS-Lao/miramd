@@ -4,15 +4,25 @@
 //! bottom is intentionally string-based so Swift and C# can consume the same
 //! engine without generated bindings.
 
-use pulldown_cmark::{html, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
+use pulldown_cmark::{
+    html, CodeBlockKind, CowStr, Event, HeadingLevel, Options, Parser, Tag, TagEnd,
+};
 use serde::Serialize;
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
+use std::sync::OnceLock;
+use syntect::highlighting::{Theme, ThemeSet};
+use syntect::html::{css_for_theme_with_class_style, ClassStyle, ClassedHTMLGenerator};
+use syntect::parsing::{SyntaxReference, SyntaxSet};
+use syntect::util::LinesWithEndings;
 
 mod docx;
 pub use docx::{export_docx, export_docx_to_path};
 
 const ENGINE_VERSION: &str = env!("CARGO_PKG_VERSION");
+const SYNTAX_CLASS_STYLE: ClassStyle = ClassStyle::SpacedPrefixed { prefix: "syntax-" };
+static SYNTAX_SET: OnceLock<SyntaxSet> = OnceLock::new();
+static SYNTAX_CSS: OnceLock<String> = OnceLock::new();
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Heading {
@@ -44,13 +54,178 @@ pub fn render_html(markdown: &str) -> String {
     let highlighted = highlight_markup(markdown);
     let parser = Parser::new_ext(&highlighted, markdown_options());
     let mut rendered = String::with_capacity(markdown.len() + markdown.len() / 2);
-    html::push_html(&mut rendered, parser);
+    html::push_html(&mut rendered, highlight_code_blocks(parser).into_iter());
 
     ammonia::Builder::default()
         .add_tags(["mark"])
-        .add_generic_attributes(["class", "id"])
+        .add_generic_attributes(["class", "id", "data-language"])
         .clean(&rendered)
         .to_string()
+}
+
+/// CSS for the classed syntax markup emitted by [`render_html`]. Native shells
+/// inject this into their existing preview stylesheet and choose either the
+/// `syntax-light` or `syntax-dark` body class.
+pub fn syntax_highlight_css() -> &'static str {
+    SYNTAX_CSS.get_or_init(build_syntax_highlight_css)
+}
+
+fn highlight_code_blocks<'a>(events: impl Iterator<Item = Event<'a>>) -> Vec<Event<'a>> {
+    let mut output = Vec::new();
+    let mut active: Option<(Option<String>, String)> = None;
+
+    for event in events {
+        match (active.as_mut(), event) {
+            (None, Event::Start(Tag::CodeBlock(kind))) => {
+                let language = match kind {
+                    CodeBlockKind::Fenced(info) => language_token(&info),
+                    CodeBlockKind::Indented => None,
+                };
+                active = Some((language, String::new()));
+            }
+            (Some((_, code)), Event::Text(text) | Event::Code(text)) => code.push_str(&text),
+            (Some((_, code)), Event::SoftBreak | Event::HardBreak) => code.push('\n'),
+            (Some(_), Event::End(TagEnd::CodeBlock)) => {
+                let (language, code) = active.take().expect("active code block");
+                output.push(Event::Html(CowStr::Boxed(
+                    highlighted_code_html(&code, language.as_deref()).into_boxed_str(),
+                )));
+            }
+            (Some((_, code)), Event::Html(text) | Event::InlineHtml(text)) => code.push_str(&text),
+            (Some(_), _) => {}
+            (None, event) => output.push(event),
+        }
+    }
+
+    if let Some((language, code)) = active {
+        output.push(Event::Html(CowStr::Boxed(
+            highlighted_code_html(&code, language.as_deref()).into_boxed_str(),
+        )));
+    }
+    output
+}
+
+fn language_token(info: &str) -> Option<String> {
+    let token = info.split_whitespace().next()?.trim().to_ascii_lowercase();
+    if token.is_empty()
+        || !token
+            .chars()
+            .all(|character| {
+                character.is_ascii_alphanumeric() || matches!(character, '+' | '-' | '_' | '#')
+            })
+    {
+        return None;
+    }
+    Some(token)
+}
+
+fn syntax_set() -> &'static SyntaxSet {
+    SYNTAX_SET.get_or_init(SyntaxSet::load_defaults_newlines)
+}
+
+fn syntax_for_token<'a>(set: &'a SyntaxSet, token: &str) -> Option<&'a SyntaxReference> {
+    let alias = match token {
+        "csharp" | "c#" => "cs",
+        "cplusplus" => "cpp",
+        "javascript" | "jsx" => "js",
+        "markdown" => "md",
+        "powershell" => "ps1",
+        "python" => "py",
+        "shell" | "zsh" => "sh",
+        "typescript" | "tsx" => "ts",
+        "yml" => "yaml",
+        other => other,
+    };
+    set.find_syntax_by_token(alias)
+}
+
+fn highlighted_code_html(code: &str, language: Option<&str>) -> String {
+    let set = syntax_set();
+    let syntax = language.and_then(|token| syntax_for_token(set, token));
+    let language_class = language
+        .map(|token| format!(" language-{}", escape_html(token)))
+        .unwrap_or_default();
+    let language_label = syntax
+        .map(|value| value.name.as_str())
+        .or(language)
+        .map(|value| format!(" data-language=\"{}\"", escape_html(value)))
+        .unwrap_or_default();
+
+    let body = syntax
+        .and_then(|syntax| {
+            let mut generator =
+                ClassedHTMLGenerator::new_with_class_style(syntax, set, SYNTAX_CLASS_STYLE);
+            for line in LinesWithEndings::from(code) {
+                generator
+                    .parse_html_for_line_which_includes_newline(line)
+                    .ok()?;
+            }
+            Some(generator.finalize())
+        })
+        .unwrap_or_else(|| escape_html(code));
+
+    format!(
+        "<pre class=\"syntax-code\"{language_label}><code class=\"syntax-source{language_class}\">{body}</code></pre>\n"
+    )
+}
+
+fn escape_html(value: &str) -> String {
+    let mut output = String::with_capacity(value.len());
+    for character in value.chars() {
+        match character {
+            '&' => output.push_str("&amp;"),
+            '<' => output.push_str("&lt;"),
+            '>' => output.push_str("&gt;"),
+            '\"' => output.push_str("&quot;"),
+            _ => output.push(character),
+        }
+    }
+    output
+}
+
+fn build_syntax_highlight_css() -> String {
+    let themes = ThemeSet::load_defaults();
+    let light = themes
+        .themes
+        .get("InspiredGitHub")
+        .or_else(|| themes.themes.get("Solarized (light)"))
+        .or_else(|| themes.themes.values().next());
+    let dark = themes
+        .themes
+        .get("base16-ocean.dark")
+        .or_else(|| themes.themes.get("Solarized (dark)"))
+        .or_else(|| themes.themes.values().next());
+
+    let light_css = light.map(|theme| scoped_theme_css(theme, ".syntax-light"));
+    let dark_css = dark.map(|theme| scoped_theme_css(theme, ".syntax-dark"));
+    format!(
+        "{}\n{}",
+        light_css.unwrap_or_default(),
+        dark_css.unwrap_or_default()
+    )
+}
+
+fn scoped_theme_css(theme: &Theme, root: &str) -> String {
+    let Ok(css) = css_for_theme_with_class_style(theme, SYNTAX_CLASS_STYLE) else {
+        return String::new();
+    };
+    css.lines()
+        .map(|line| {
+            let Some(selectors) = line.strip_suffix(" {") else {
+                return line.to_owned();
+            };
+            if !selectors.starts_with('.') {
+                return line.to_owned();
+            }
+            let scoped = selectors
+                .split(", ")
+                .map(|selector| format!("{root} {selector}"))
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("{scoped} {{")
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 pub fn outline(markdown: &str) -> Vec<Heading> {
@@ -342,6 +517,11 @@ pub extern "C" fn miramd_engine_version() -> *mut c_char {
 }
 
 #[no_mangle]
+pub extern "C" fn miramd_syntax_highlight_css() -> *mut c_char {
+    return_string(syntax_highlight_css().to_owned())
+}
+
+#[no_mangle]
 pub extern "C" fn miramd_render_html(markdown: *const c_char) -> *mut c_char {
     match read_input(markdown) {
         Ok(value) => return_string(render_html(value)),
@@ -419,6 +599,32 @@ mod tests {
         assert!(rendered.contains("<mark>this Lao ຂໍ້ຄວາມ</mark>"));
         assert!(rendered.contains("<code>x == y</code>"));
         assert!(rendered.contains("==literal=="));
+    }
+
+    #[test]
+    fn renders_fenced_code_with_offline_language_highlighting() {
+        let rendered = render_html(
+            "```rust\nfn main() {\n    println!(\"ສະບາຍດີ\");\n}\n```",
+        );
+        assert!(rendered.contains("<pre class=\"syntax-code\" data-language=\"Rust\">"));
+        assert!(rendered.contains("language-rust"));
+        assert!(rendered.contains("syntax-"));
+        assert!(rendered.contains("ສະບາຍດີ"));
+        assert!(!rendered.contains("<script"));
+    }
+
+    #[test]
+    fn unknown_code_languages_remain_safe_plain_text() {
+        let rendered = render_html("```made-up\n<tag>& value\n```");
+        assert!(rendered.contains("language-made-up"));
+        assert!(rendered.contains("&lt;tag&gt;&amp; value"));
+    }
+
+    #[test]
+    fn syntax_css_contains_scoped_light_and_dark_themes() {
+        let css = syntax_highlight_css();
+        assert!(css.contains(".syntax-light .syntax-"));
+        assert!(css.contains(".syntax-dark .syntax-"));
     }
 
     #[test]

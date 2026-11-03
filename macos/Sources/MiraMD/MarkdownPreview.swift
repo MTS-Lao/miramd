@@ -21,13 +21,13 @@ struct MarkdownPreview: NSViewRepresentable {
         webView.appearance = NSAppearance(
             named: colorScheme == .dark ? .darkAqua : .aqua
         )
-        let document = Self.htmlDocument(fragment: fragment)
+        let document = Self.htmlDocument(fragment: fragment, dark: colorScheme == .dark)
         guard document != context.coordinator.lastDocument else { return }
         context.coordinator.lastDocument = document
         webView.loadHTMLString(document, baseURL: AppFonts.resourceBundle.resourceURL)
     }
 
-    static func htmlDocument(fragment: String, editable: Bool = false) -> String {
+    static func htmlDocument(fragment: String, editable: Bool = false, dark: Bool) -> String {
         let hasLao = fragment.unicodeScalars.contains { (0x0E80...0x0EFF).contains(Int($0.value)) }
         let language = hasLao ? "lo" : "en"
         let editorAttributes = editable
@@ -41,6 +41,7 @@ struct MarkdownPreview: NSViewRepresentable {
         @font-face { font-family: 'Phetsarath Lao'; src: url('Fonts/PhetsarathLao-Regular.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; unicode-range: U+0E80-0EFF; }
         @font-face { font-family: 'Phetsarath Lao'; src: url('Fonts/PhetsarathLao-SemiBold.woff2') format('woff2'); font-weight: 600; font-style: normal; font-display: swap; unicode-range: U+0E80-0EFF; }
         @font-face { font-family: 'Phetsarath Lao'; src: url('Fonts/PhetsarathLao-Bold.woff2') format('woff2'); font-weight: 700 900; font-style: normal; font-display: swap; unicode-range: U+0E80-0EFF; }
+        \(MiraCore.syntaxHighlightCSS)
         :root { color-scheme: light dark; font: -apple-system-body; }
         body { max-width: 760px; margin: 0 auto; padding: 32px 38px 80px; font-family: 'Phetsarath Lao', -apple-system, BlinkMacSystemFont, sans-serif; line-height: \(hasLao ? "1.9" : "1.65"); color: #202124; overflow-wrap: normal; word-break: normal; }
         h1, h2, h3, h4 { line-height: 1.25; margin-top: 1.6em; margin-bottom: .55em; color: #111; }
@@ -51,6 +52,8 @@ struct MarkdownPreview: NSViewRepresentable {
         blockquote { margin: 1.2em 0; padding: .2em 1em; color: #52565d; border-left: 4px solid #8b5cf6; background: rgba(139,92,246,.07); }
         code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .9em; background: rgba(127,127,127,.14); border-radius: 5px; padding: .15em .35em; }
         pre { padding: 16px; overflow: auto; background: rgba(127,127,127,.12); border: 1px solid rgba(127,127,127,.18); border-radius: 9px; }
+        pre.syntax-code { position: relative; padding-top: 2.35em; }
+        pre.syntax-code[data-language]::before { content: attr(data-language); position: absolute; top: .45em; right: .75em; color: rgba(127,127,127,.82); font: 600 11px/1.4 -apple-system, BlinkMacSystemFont, sans-serif; letter-spacing: .04em; text-transform: uppercase; }
         pre code { padding: 0; background: none; }
         table { border-collapse: collapse; width: 100%; margin: 1em 0; }
         th, td { border: 1px solid #cfd2d7; padding: 8px 11px; text-align: left; } th { background: rgba(127,127,127,.1); }
@@ -66,7 +69,7 @@ struct MarkdownPreview: NSViewRepresentable {
           mark { background: #806515; color: #fff5bf; }
           th, td { border-color: #4b4e56; }
         }
-        </style></head><body\(editorAttributes)>\(fragment)\(editorScript)</body></html>
+        </style></head><body class="syntax-\(dark ? "dark" : "light")"\(editorAttributes)>\(fragment)\(editorScript)</body></html>
         """
     }
 

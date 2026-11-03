@@ -650,12 +650,13 @@ public sealed partial class MainWindow : Window
         return $$"""
         <!doctype html><html lang="{{language}}"><head><meta charset="utf-8"><meta name="color-scheme" content="{{(dark ? "dark" : "light")}}"><style>
         {{PhetsarathLaoCss.Value}}
+        {{NativeCore.SyntaxHighlightCss}}
         :root{color-scheme:{{(dark ? "dark" : "light")}};font:16px/{{lineHeight}} 'Phetsarath Lao','Segoe UI',sans-serif}html,body{background:transparent}body{max-width:760px;margin:auto;padding:30px 38px 80px;overflow-wrap:normal;word-break:normal}body[contenteditable=true]{min-height:calc(100vh - 110px);outline:none;caret-color:#1769e0}
         h1,h2,h3,h4{line-height:1.25;margin-top:1.6em}h1,h2{border-bottom:1px solid;padding-bottom:.25em}a{text-decoration:none}
         blockquote{margin:1.2em 0;padding:.2em 1em;color:#52565d;border-left:4px solid #8b5cf6;background:rgba(139,92,246,.07)}mark{color:inherit;background:#ffe082;padding:.06em .18em;border-radius:.22em;box-decoration-break:clone;-webkit-box-decoration-break:clone}code{font-family:"Cascadia Mono",Consolas,monospace;background:rgba(127,127,127,.14);border-radius:5px;padding:.15em .35em}
-        pre{padding:16px;overflow:auto;background:rgba(127,127,127,.12);border-radius:9px}pre code{padding:0;background:none}table{border-collapse:collapse;width:100%}th,td{border:1px solid #cfd2d7;padding:8px 11px;text-align:left}img{max-width:100%}
+        pre{padding:16px;overflow:auto;background:rgba(127,127,127,.12);border-radius:9px}pre.syntax-code{position:relative;padding-top:2.35em}pre.syntax-code[data-language]::before{content:attr(data-language);position:absolute;top:.45em;right:.75em;color:rgba(127,127,127,.82);font:600 11px/1.4 'Segoe UI',sans-serif;letter-spacing:.04em;text-transform:uppercase}pre code{padding:0;background:none}table{border-collapse:collapse;width:100%}th,td{border:1px solid #cfd2d7;padding:8px 11px;text-align:left}img{max-width:100%}
         {{theme}}
-        </style></head><body{{editorAttributes}}>{{fragment}}{{editorScript}}</body></html>
+        </style></head><body class="syntax-{{(dark ? "dark" : "light")}}"{{editorAttributes}}>{{fragment}}{{editorScript}}</body></html>
         """;
     }
 

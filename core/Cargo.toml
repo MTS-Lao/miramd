@@ -14,4 +14,5 @@ ammonia = "4.1"
 pulldown-cmark = "0.12"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+syntect = { version = "5.3", default-features = false, features = ["default-syntaxes", "default-themes", "html", "regex-fancy"] }
 zip = { version = "2.2", default-features = false, features = ["deflate"] }

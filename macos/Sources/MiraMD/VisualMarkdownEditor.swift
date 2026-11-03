@@ -26,7 +26,11 @@ struct VisualMarkdownEditor: NSViewRepresentable {
         webView.appearance = NSAppearance(
             named: colorScheme == .dark ? .darkAqua : .aqua
         )
-        let document = MarkdownPreview.htmlDocument(fragment: fragment, editable: true)
+        let document = MarkdownPreview.htmlDocument(
+            fragment: fragment,
+            editable: true,
+            dark: colorScheme == .dark
+        )
         if context.coordinator.pendingWebMarkdown == text {
             context.coordinator.pendingWebMarkdown = nil
             context.coordinator.lastDocument = document
