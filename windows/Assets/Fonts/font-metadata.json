@@ -1,0 +1,13 @@
+{
+  "catalog": "https://fonts.mts.la/api/fonts.json",
+  "catalog_version": "19",
+  "family": "Phetsarath Lao",
+  "font_family_css": "Phetsarath Lao",
+  "license": "SIL OFL 1.1",
+  "source_page": "https://fonts.mts.la/f/phetsarath-lao",
+  "weights": [
+    400,
+    600,
+    700
+  ]
+}

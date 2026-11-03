@@ -1,0 +1,13 @@
+/target/
+/dist/
+/output/
+/macos/.build/
+/.swiftpm/
+.DS_Store
+__pycache__/
+*.py[cod]
+*.user
+*.suo
+.vs/
+bin/
+obj/
