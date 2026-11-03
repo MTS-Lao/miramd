@@ -24,8 +24,6 @@ if [[ ! -d "$APP_DIR" ]]; then
     exit 1
 fi
 
-codesign --verify --deep --strict --verbose=2 "$APP_DIR"
-
 DEVELOPER_ID=${MIRAMD_CODESIGN_IDENTITY:-}
 if [[ -z "$DEVELOPER_ID" ]]; then
     DEVELOPER_ID=$(security find-identity -v -p codesigning 2>/dev/null \
@@ -41,6 +39,8 @@ if [[ -z "$DEVELOPER_ID" && "$ALLOW_UNNOTARIZED" != "1" ]]; then
     print -u2 "Install them in Keychain Access, or set MIRAMD_ALLOW_UNNOTARIZED=1 only for local testing."
     exit 1
 fi
+
+codesign --verify --deep --strict --verbose=2 "$APP_DIR"
 
 if [[ -n "$DEVELOPER_ID" && -z "$NOTARY_PROFILE" && "$ALLOW_UNNOTARIZED" != "1" ]]; then
     print -u2 "Set MIRAMD_NOTARY_PROFILE to a notarytool keychain profile for a public DMG."
