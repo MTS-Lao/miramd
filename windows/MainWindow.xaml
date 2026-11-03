@@ -127,8 +127,8 @@
                     FontSize="14"
                     Padding="22"
                     BorderThickness="0,0,1,0"
-                    VerticalScrollBarVisibility="Auto"
-                    HorizontalScrollBarVisibility="Disabled"
+                    ScrollViewer.VerticalScrollBarVisibility="Auto"
+                    ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                     TextChanged="Editor_TextChanged" />
                 <WebView2 x:Name="Preview" Grid.Column="1" NavigationStarting="Preview_NavigationStarting" WebMessageReceived="Preview_WebMessageReceived" />
             </Grid>

@@ -48,6 +48,7 @@ public sealed partial class MainWindow : Window
     public MainWindow(string? initialPath = null)
     {
         InitializeComponent();
+        Preview.Loaded += Preview_Loaded;
         RestoreSettings();
         RootLayout.ActualThemeChanged += (_, _) => RefreshDocument();
         Title = "MiraMD — Untitled.md";
@@ -127,6 +128,19 @@ public sealed partial class MainWindow : Window
         UpdateTitle();
     }
 
+    private async void Preview_Loaded(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            await Preview.EnsureCoreWebView2Async();
+            RefreshDocument();
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = $"Could not initialize the WebView2 preview: {ex.Message}";
+        }
+    }
+
     private void RefreshDocument()
     {
         try
@@ -135,7 +149,7 @@ public sealed partial class MainWindow : Window
             DocumentStatsText.Text = $"{stats.Words:N0} words\n{stats.Characters:N0} characters\n{stats.ReadingMinutes} min read";
             StatusText.Text = $"{stats.Words:N0} words   {stats.Lines:N0} lines   {stats.ReadingMinutes} min read";
             OutlineList.ItemsSource = NativeCore.Outline(Editor.Text);
-            if (!_isReceivingVisualEdit)
+            if (!_isReceivingVisualEdit && Preview.CoreWebView2 is not null)
             {
                 Preview.NavigateToString(PreviewDocument(
                     NativeCore.Render(Editor.Text),
@@ -594,7 +608,7 @@ public sealed partial class MainWindow : Window
         try
         {
             var attributes = File.GetAttributes(path);
-            return attributes.HasFlag(FileAttributes.Hidden) || attributes.HasFlag(FileAttributes.ReparsePoint);
+            return attributes.HasFlag(global::System.IO.FileAttributes.Hidden) || attributes.HasFlag(global::System.IO.FileAttributes.ReparsePoint);
         }
         catch
         {
