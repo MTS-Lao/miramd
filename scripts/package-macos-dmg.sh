@@ -29,8 +29,8 @@ if [[ -z "$DEVELOPER_ID" ]]; then
     DEVELOPER_ID=$(security find-identity -v -p codesigning 2>/dev/null \
         | awk '/"Developer ID Application:/ { identity=$2 } END { print identity }')
 elif ! security find-identity -v -p codesigning 2>/dev/null \
-    | grep -F "$DEVELOPER_ID" \
-    | grep -q 'Developer ID Application:'; then
+    | awk -v identity="$DEVELOPER_ID" \
+        'index($0, identity) && /Developer ID Application:/ { found=1 } END { exit !found }'; then
     DEVELOPER_ID=
 fi
 
@@ -50,7 +50,7 @@ fi
 
 if [[ -n "$DEVELOPER_ID" ]]; then
     APP_AUTHORITY=$(codesign -dv --verbose=4 "$APP_DIR" 2>&1 \
-        | awk -F= '/^Authority=/{ print $2; exit }')
+        | awk -F= '/^Authority=/ && !found { print $2; found=1 }')
     if [[ "$APP_AUTHORITY" != "Developer ID Application:"* ]]; then
         print -u2 "MiraMD.app is not signed with Developer ID Application. Rebuild it before packaging."
         exit 1

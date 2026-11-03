@@ -42,8 +42,8 @@ SIGNING_IDENTITY=${SIGNING_IDENTITY:--}
 SIGN_ARGUMENTS=(--force --options runtime --sign "$SIGNING_IDENTITY")
 if [[ "$SIGNING_IDENTITY" == "Developer ID Application:"* ]] \
     || security find-identity -v -p codesigning 2>/dev/null \
-        | grep -F "$SIGNING_IDENTITY" \
-        | grep -q 'Developer ID Application:'; then
+        | awk -v identity="$SIGNING_IDENTITY" \
+            'index($0, identity) && /Developer ID Application:/ { found=1 } END { exit !found }'; then
     SIGN_ARGUMENTS+=(--timestamp)
 fi
 
