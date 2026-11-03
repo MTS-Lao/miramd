@@ -82,5 +82,5 @@ The desktop display path deliberately uses the separate Lao-only `Phetsarath Lao
 2. Add a block-based visual editor with lossless fallback for tables, directives, and embedded HTML.
 3. Add an opt-in local IPC channel so MCP can target an unsaved open buffer, guarded by in-app approval.
 4. Add autosave, crash recovery, tabs, recent files, and workspace search.
-5. Add signed/notarized macOS packaging and MSIX packaging for Windows.
+5. Install the Developer ID credentials used by the DMG release script, and add MSIX packaging for Windows.
 6. If remote MCP is ever offered, introduce authenticated Streamable HTTP, audit logs, and per-tool consent; do not expose the local stdio design over a network.

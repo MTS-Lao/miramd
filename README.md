@@ -40,6 +40,29 @@ open dist/MiraMD.app
 
 The build uses `miramd-icon-transparent-logo.png` for the app icon. Regenerate macOS and Windows icon assets after changing the logo with `./scripts/generate-icons.sh`. macOS signing automatically prefers an installed **Developer ID Application** identity, falls back to **Apple Development**, and finally uses ad-hoc signing. Set `MIRAMD_CODESIGN_IDENTITY` to override the selected identity.
 
+### Build the public macOS DMG
+
+Public downloads should use the DMG installer instead of a ZIP. The DMG places `MiraMD.app` beside an Applications shortcut so installation is a drag-and-drop operation.
+
+1. Install a **Developer ID Application** certificate and its private key in the login keychain.
+2. Store App Store Connect notarization credentials in the keychain:
+
+   ```sh
+   xcrun notarytool store-credentials miramd-notary
+   ```
+
+3. Build, sign, notarize, staple, and verify the DMG:
+
+   ```sh
+   MIRAMD_NOTARY_PROFILE=miramd-notary ./scripts/package-macos-dmg.sh
+   ```
+
+The output is `dist/MiraMD-0.1.0-macOS-arm64.dmg` on Apple Silicon. The script refuses to create a public release artifact without Developer ID signing and notarization. For local layout testing only, use:
+
+```sh
+MIRAMD_SKIP_BUILD=1 MIRAMD_ALLOW_UNNOTARIZED=1 ./scripts/package-macos-dmg.sh
+```
+
 ## Build for Windows
 
 Requirements: Windows 10 1809+, Visual Studio Build Tools with the C++ workload, .NET 8 SDK, and Rust's MSVC toolchain.
