@@ -12,8 +12,11 @@ $Output = Join-Path $ProjectRoot "dist\windows-$Architecture"
 Push-Location $ProjectRoot
 try {
     rustup target add $RustTarget
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     cargo build --release -p miramd-core -p miramd-mcp --target $RustTarget
-    dotnet publish windows\MiraMD.Windows.csproj -c Release -r $Runtime -p:Platform=$Architecture -o $Output
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    dotnet publish windows\MiraMD.Windows.csproj -c Release -r $Runtime -p:Platform=$Architecture --self-contained true -o $Output
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     Copy-Item "target\$RustTarget\release\miramd_core.dll" $Output -Force
     Copy-Item "target\$RustTarget\release\miramd-mcp.exe" $Output -Force
     Write-Host "Built $Output"
