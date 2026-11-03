@@ -27,6 +27,9 @@ private func miramd_export_ai(
 @_silgen_name("miramd_clean_markdown")
 private func miramd_clean_markdown(_ markdown: UnsafePointer<CChar>) -> UnsafeMutablePointer<CChar>?
 
+@_silgen_name("miramd_import_docx")
+private func miramd_import_docx(_ path: UnsafePointer<CChar>) -> UnsafeMutablePointer<CChar>?
+
 @_silgen_name("miramd_export_docx")
 private func miramd_export_docx(
     _ markdown: UnsafePointer<CChar>,
@@ -54,6 +57,13 @@ struct DocumentStats: Codable, Equatable {
     }
 
     static let empty = DocumentStats(words: 0, characters: 0, lines: 0, readingMinutes: 0)
+}
+
+struct WordImportResult: Codable {
+    let markdown: String
+    let title: String
+    let warnings: [String]
+    let error: String
 }
 
 enum MiraCore {
@@ -89,6 +99,27 @@ enum MiraCore {
 
     static func cleanMarkdown(_ markdown: String) -> String {
         call(markdown, miramd_clean_markdown) ?? markdown
+    }
+
+    static func importWord(from url: URL) throws -> WordImportResult {
+        guard let json = call(url.path, miramd_import_docx),
+              let data = json.data(using: .utf8),
+              let result = try? JSONDecoder().decode(WordImportResult.self, from: data)
+        else {
+            throw NSError(
+                domain: "MiraMD.WordImport",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "The Word importer did not return a readable result."]
+            )
+        }
+        if !result.error.isEmpty {
+            throw NSError(
+                domain: "MiraMD.WordImport",
+                code: 2,
+                userInfo: [NSLocalizedDescriptionKey: result.error]
+            )
+        }
+        return result
     }
 
     static func exportWord(_ markdown: String, title: String, to url: URL) throws {

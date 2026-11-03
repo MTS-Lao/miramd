@@ -25,7 +25,7 @@ struct MiraMDApp: App {
                 }
                 .task {
                     guard let path = CommandLine.arguments.dropFirst().first,
-                          ["md", "markdown", "mdown", "mkd"].contains(URL(fileURLWithPath: path).pathExtension.lowercased())
+                          ["md", "markdown", "mdown", "mkd", "docx"].contains(URL(fileURLWithPath: path).pathExtension.lowercased())
                     else { return }
                     document.open(URL(fileURLWithPath: path))
                 }

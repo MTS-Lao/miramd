@@ -69,7 +69,7 @@ struct ContentView: View {
     private var toolbar: some ToolbarContent {
         ToolbarItemGroup(placement: .primaryAction) {
             Button { document.showOpenPanel() } label: { Label("Open", systemImage: "folder") }
-                .help("Open Markdown")
+                .help("Open Markdown or import Microsoft Word")
             Button { document.save() } label: { Label("Save", systemImage: "square.and.arrow.down") }
                 .help("Save")
             Button { document.copyForAI() } label: { Label("Copy for AI", systemImage: "sparkles") }

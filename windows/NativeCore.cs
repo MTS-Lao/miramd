@@ -18,6 +18,12 @@ internal sealed record DocumentStats(
     internal static DocumentStats Empty { get; } = new(0, 0, 0, 0);
 }
 
+internal sealed record WordImportResult(
+    [property: JsonPropertyName("markdown")] string Markdown,
+    [property: JsonPropertyName("title")] string Title,
+    [property: JsonPropertyName("warnings")] string[] Warnings,
+    [property: JsonPropertyName("error")] string Error);
+
 internal static partial class NativeCore
 {
     [LibraryImport("miramd_core", EntryPoint = "miramd_render_html", StringMarshalling = StringMarshalling.Utf8)]
@@ -37,6 +43,9 @@ internal static partial class NativeCore
 
     [LibraryImport("miramd_core", EntryPoint = "miramd_clean_markdown", StringMarshalling = StringMarshalling.Utf8)]
     private static partial IntPtr CleanMarkdownNative(string markdown);
+
+    [LibraryImport("miramd_core", EntryPoint = "miramd_import_docx", StringMarshalling = StringMarshalling.Utf8)]
+    private static partial IntPtr ImportDocxNative(string path);
 
     [LibraryImport("miramd_core", EntryPoint = "miramd_export_docx", StringMarshalling = StringMarshalling.Utf8)]
     private static partial IntPtr ExportDocxNative(string markdown, string title, string path);
@@ -63,6 +72,18 @@ internal static partial class NativeCore
         Take(ExportAiNative(markdown, filename));
 
     internal static string CleanMarkdown(string markdown) => Take(CleanMarkdownNative(markdown));
+
+    internal static WordImportResult ImportDocx(string path)
+    {
+        var json = Take(ImportDocxNative(path));
+        var result = JsonSerializer.Deserialize<WordImportResult>(json)
+            ?? throw new InvalidOperationException("The Word importer did not return a readable result.");
+        if (!string.IsNullOrEmpty(result.Error))
+        {
+            throw new InvalidOperationException(result.Error);
+        }
+        return result;
+    }
 
     internal static void ExportDocx(string markdown, string title, string path)
     {

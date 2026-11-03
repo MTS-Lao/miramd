@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import UniformTypeIdentifiers
 
 @MainActor
 final class MarkdownDocument: ObservableObject {
@@ -11,6 +12,7 @@ final class MarkdownDocument: ObservableObject {
         }
     }
     @Published private(set) var fileURL: URL?
+    @Published private(set) var suggestedName = "Untitled.md"
     @Published private(set) var isDirty = false
     @Published private(set) var renderedHTML = ""
     @Published private(set) var outline: [OutlineItem] = []
@@ -23,7 +25,7 @@ final class MarkdownDocument: ObservableObject {
         refreshDerivedContent()
     }
 
-    var displayName: String { fileURL?.lastPathComponent ?? "Untitled.md" }
+    var displayName: String { fileURL?.lastPathComponent ?? suggestedName }
     var windowTitle: String { isDirty ? "\(displayName) — Edited" : displayName }
 
     func newDocument() {
@@ -34,10 +36,13 @@ final class MarkdownDocument: ObservableObject {
     func showOpenPanel() {
         guard confirmDiscardIfNeeded() else { return }
         let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.init(filenameExtension: "md")!, .plainText]
+        var contentTypes: [UTType] = ["md", "markdown", "mdown", "mkd", "docx"]
+            .compactMap { .init(filenameExtension: $0) }
+        contentTypes.append(.plainText)
+        panel.allowedContentTypes = contentTypes
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
-        panel.message = "Choose a Markdown document"
+        panel.message = "Choose a Markdown document or import a Microsoft Word document"
         guard panel.runModal() == .OK, let url = panel.url else { return }
         loadFromDisk(url)
     }
@@ -48,11 +53,37 @@ final class MarkdownDocument: ObservableObject {
     }
 
     private func loadFromDisk(_ url: URL) {
+        if url.pathExtension.lowercased() == "docx" {
+            importWord(url)
+            return
+        }
         do {
             let value = try String(contentsOf: url, encoding: .utf8)
             load(content: value, from: url)
         } catch {
             showError(title: "Couldn’t open the document", error: error)
+        }
+    }
+
+    private func importWord(_ url: URL) {
+        do {
+            let imported = try MiraCore.importWord(from: url)
+            let markdownName = url.deletingPathExtension().lastPathComponent + ".md"
+            load(
+                content: imported.markdown,
+                from: nil,
+                suggestedName: markdownName,
+                dirty: true
+            )
+            if !imported.warnings.isEmpty {
+                let alert = NSAlert()
+                alert.messageText = "Word document imported"
+                alert.informativeText = imported.warnings.joined(separator: "\n\n")
+                alert.addButton(withTitle: "Continue")
+                alert.runModal()
+            }
+        } catch {
+            showError(title: "Couldn’t import the Word document", error: error)
         }
     }
 
@@ -162,11 +193,17 @@ final class MarkdownDocument: ObservableObject {
         }
     }
 
-    private func load(content: String, from url: URL?) {
+    private func load(
+        content: String,
+        from url: URL?,
+        suggestedName: String = "Untitled.md",
+        dirty: Bool = false
+    ) {
         isLoading = true
         self.content = content
         fileURL = url
-        isDirty = false
+        self.suggestedName = url?.lastPathComponent ?? suggestedName
+        isDirty = dirty
         isLoading = false
         refreshDerivedContent()
         if let url {

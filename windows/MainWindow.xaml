@@ -13,7 +13,7 @@
 
         <CommandBar Grid.Row="0" DefaultLabelPosition="Right">
             <AppBarButton Icon="Add" Label="New" Click="New_Click" />
-            <AppBarButton Icon="OpenFile" Label="Open" Click="Open_Click" />
+            <AppBarButton Icon="OpenFile" Label="Open" Click="Open_Click" ToolTipService.ToolTip="Open Markdown or import Microsoft Word" />
             <AppBarButton Icon="Save" Label="Save" Click="Save_Click" />
             <AppBarSeparator />
             <AppBarButton Label="Copy for AI" Click="CopyForAi_Click">

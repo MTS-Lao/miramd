@@ -17,6 +17,7 @@ This repository contains a working macOS MVP, a WinUI 3 Windows shell, a shared 
 - Safe HTML rendering with tables, task lists, footnotes, and strikethrough
 - Open, create, save, Save As, and AI-ready export
 - Microsoft Word `.docx` export with headings, lists, tables, code, Unicode, and Lao complex-script support
+- Open or import Microsoft Word `.docx` files as editable Markdown for AI workflows
 - Phetsarath Lao for in-app Lao display, with native SF Pro/Segoe UI and SF Mono/Cascadia fallback for English
 - MCP tools for listing, reading, creating, editing, rendering, and opening Markdown files
 - Folder allowlists and revision checks for AI writes
@@ -84,6 +85,14 @@ Available MCP tools:
 - `export_word_document`
 
 Word exports mark Lao runs with `Phetsarath OT`, complex-script sizing and emphasis properties, and `lo-LA` language metadata so Microsoft Word can shape and wrap Lao correctly. Install Phetsarath OT 4.100 or newer for the intended appearance; Word will use an available Lao fallback otherwise.
+
+Opening a `.docx` converts its headings, emphasis, highlights, links, lists, tables, code blocks, tracked insertions, and Unicode text into a new unsaved Markdown document. The original Word file is never overwritten. Embedded images and Word equations become descriptive placeholders because an imported document does not yet have a permanent Markdown asset folder; save the Markdown first, then add or relink image files as needed.
+
+The shared Rust importer can also be run directly:
+
+```sh
+cargo run -p miramd-core --example import_docx -- input.docx output.md
+```
 
 The in-app display font is the separate Lao-only **Phetsarath Lao** web/app edition from the [LaoFonts catalog](https://fonts.mts.la/f/phetsarath-lao). Refresh the bundled font assets from the catalog API with `python3 scripts/fetch-fonts.py`. This does not alter the DOCX export font.
 

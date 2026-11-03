@@ -37,6 +37,7 @@ public sealed partial class MainWindow : Window
         """;
 
     private StorageFile? _currentFile;
+    private string _suggestedName = "Untitled.md";
     private readonly AppSettings _settings = LoadSettings();
     private string? _workspacePath;
     private bool _isDirty;
@@ -60,19 +61,18 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private string DisplayName => _currentFile?.Name ?? "Untitled.md";
+    private string DisplayName => _currentFile?.Name ?? _suggestedName;
 
     private async Task OpenInitialFileAsync(string path)
     {
         try
         {
-            _currentFile = await StorageFile.GetFileFromPathAsync(Path.GetFullPath(path));
-            LoadDocument(await FileIO.ReadTextAsync(_currentFile));
-            AdoptWorkspaceForFile(_currentFile.Path);
+            var file = await StorageFile.GetFileFromPathAsync(Path.GetFullPath(path));
+            await OpenDocumentAsync(file);
         }
-        catch
+        catch (Exception error)
         {
-            StatusText.Text = $"Could not open {path}";
+            StatusText.Text = $"Could not open {path}: {error.Message}";
         }
     }
 
@@ -80,6 +80,7 @@ public sealed partial class MainWindow : Window
     {
         if (!await ConfirmDiscardAsync()) return;
         _currentFile = null;
+        _suggestedName = "Untitled.md";
         LoadDocument(StarterDocument);
     }
 
@@ -89,12 +90,18 @@ public sealed partial class MainWindow : Window
         var picker = new FileOpenPicker();
         picker.FileTypeFilter.Add(".md");
         picker.FileTypeFilter.Add(".markdown");
+        picker.FileTypeFilter.Add(".docx");
         InitializePicker(picker);
         var file = await picker.PickSingleFileAsync();
         if (file is null) return;
-        _currentFile = file;
-        LoadDocument(await FileIO.ReadTextAsync(file));
-        AdoptWorkspaceForFile(file.Path);
+        try
+        {
+            await OpenDocumentAsync(file);
+        }
+        catch (Exception error)
+        {
+            StatusText.Text = error.Message;
+        }
     }
 
     private async void Save_Click(object sender, RoutedEventArgs e) => await SaveAsync();
@@ -104,12 +111,16 @@ public sealed partial class MainWindow : Window
         var file = _currentFile;
         if (file is null)
         {
-            var picker = new FileSavePicker { SuggestedFileName = "Untitled" };
+            var picker = new FileSavePicker
+            {
+                SuggestedFileName = Path.GetFileNameWithoutExtension(DisplayName),
+            };
             picker.FileTypeChoices.Add("Markdown document", [".md"]);
             InitializePicker(picker);
             file = await picker.PickSaveFileAsync();
             if (file is null) return false;
             _currentFile = file;
+            _suggestedName = file.Name;
         }
 
         await FileIO.WriteTextAsync(file, Editor.Text);
@@ -164,12 +175,37 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void LoadDocument(string value)
+    private async Task OpenDocumentAsync(StorageFile file)
+    {
+        if (file.FileType.Equals(".docx", StringComparison.OrdinalIgnoreCase))
+        {
+            var imported = NativeCore.ImportDocx(file.Path);
+            _currentFile = null;
+            _suggestedName = Path.GetFileNameWithoutExtension(file.Name) + ".md";
+            LoadDocument(imported.Markdown, dirty: true);
+            AdoptWorkspaceForFile(file.Path);
+            StatusText.Text = imported.Warnings.Length == 0
+                ? $"Imported {file.Name} as Markdown — save to create {_suggestedName}"
+                : string.Join("  ", imported.Warnings);
+            return;
+        }
+
+        if (!MarkdownExtensions.Contains(file.FileType))
+        {
+            throw new InvalidOperationException("MiraMD can open Markdown and DOCX files.");
+        }
+        _currentFile = file;
+        _suggestedName = file.Name;
+        LoadDocument(await FileIO.ReadTextAsync(file));
+        AdoptWorkspaceForFile(file.Path);
+    }
+
+    private void LoadDocument(string value, bool dirty = false)
     {
         _isLoading = true;
         Editor.Text = value;
         _isLoading = false;
-        _isDirty = false;
+        _isDirty = dirty;
         RefreshDocument();
         UpdateTitle();
     }

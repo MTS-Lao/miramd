@@ -9,7 +9,7 @@ struct MiraMDCommands: Commands {
         CommandGroup(replacing: .newItem) {
             Button("New") { document.newDocument() }
                 .keyboardShortcut("n")
-            Button("Open…") { document.showOpenPanel() }
+            Button("Open or Import Word…") { document.showOpenPanel() }
                 .keyboardShortcut("o")
         }
         CommandGroup(replacing: .saveItem) {

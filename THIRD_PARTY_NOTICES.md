@@ -17,3 +17,10 @@ MiraMD uses Syntect for offline syntax highlighting of fenced code blocks.
 
 - Source: <https://github.com/trishume/syntect>
 - License: MIT
+
+## roxmltree
+
+MiraMD uses roxmltree to safely read the XML parts of imported Word documents.
+
+- Source: <https://github.com/RazrFalcon/roxmltree>
+- License: MIT or Apache License 2.0

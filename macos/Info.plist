@@ -23,6 +23,13 @@
             <key>CFBundleTypeRole</key><string>Editor</string>
             <key>LSHandlerRank</key><string>Alternate</string>
         </dict>
+        <dict>
+            <key>CFBundleTypeExtensions</key>
+            <array><string>docx</string></array>
+            <key>CFBundleTypeName</key><string>Microsoft Word document</string>
+            <key>CFBundleTypeRole</key><string>Viewer</string>
+            <key>LSHandlerRank</key><string>Alternate</string>
+        </dict>
     </array>
 </dict>
 </plist>

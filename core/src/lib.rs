@@ -17,7 +17,9 @@ use syntect::parsing::{SyntaxReference, SyntaxSet};
 use syntect::util::LinesWithEndings;
 
 mod docx;
+mod docx_import;
 pub use docx::{export_docx, export_docx_to_path};
+pub use docx_import::{import_docx, import_docx_from_path, DocxImport};
 
 const ENGINE_VERSION: &str = env!("CARGO_PKG_VERSION");
 const SYNTAX_CLASS_STYLE: ClassStyle = ClassStyle::SpacedPrefixed { prefix: "syntax-" };
@@ -37,6 +39,14 @@ pub struct DocumentStats {
     pub characters: usize,
     pub lines: usize,
     pub reading_minutes: usize,
+}
+
+#[derive(Debug, Serialize)]
+struct DocxImportResponse {
+    markdown: String,
+    title: String,
+    warnings: Vec<String>,
+    error: String,
 }
 
 fn markdown_options() -> Options {
@@ -562,6 +572,35 @@ pub extern "C" fn miramd_clean_markdown(markdown: *const c_char) -> *mut c_char 
         Ok(value) => return_string(clean_markdown(value)),
         Err(()) => std::ptr::null_mut(),
     }
+}
+
+/// Import a Word document and return a JSON response containing Markdown,
+/// title, warnings, and a user-facing error string.
+#[no_mangle]
+pub extern "C" fn miramd_import_docx(path: *const c_char) -> *mut c_char {
+    let response = match read_input(path) {
+        Ok(path) => match import_docx_from_path(path) {
+            Ok(document) => DocxImportResponse {
+                markdown: document.markdown,
+                title: document.title,
+                warnings: document.warnings,
+                error: String::new(),
+            },
+            Err(error) => DocxImportResponse {
+                markdown: String::new(),
+                title: String::new(),
+                warnings: Vec::new(),
+                error,
+            },
+        },
+        Err(()) => DocxImportResponse {
+            markdown: String::new(),
+            title: String::new(),
+            warnings: Vec::new(),
+            error: "MiraMD received an invalid Word document path.".to_owned(),
+        },
+    };
+    return_string(json(&response))
 }
 
 /// Export Markdown to a Word document. An empty returned string means success;
